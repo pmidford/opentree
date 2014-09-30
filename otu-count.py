@@ -80,13 +80,13 @@ def parse_synth_study_ids(synthesis_list): # works now, but will need revision o
 
 if __name__ == "__main__":
    
-''' 
+    ''' 
     Generalized API locations in case they change in the future. 
     Though the functions may require minor tweaks if there are changes
-'''
+    '''
     synth_list_url = 'http://api.opentreeoflife.org/treemachine/v1/getSynthesisSourceList' # point where needed
-    study_list_url = 'http://devapi.opentreeoflife.org/phylesystem/v1/study_list' # point where needed
-    study_api_url = 'http://devapi.opentreeoflife.org/api/v1/study/' # point where needed, but see get_remote_otus
+    study_list_url = 'http://api.opentreeoflife.org/phylesystem/v1/study_list' # point where needed
+    study_api_url = 'http://`api.opentreeoflife.org/phylesystem/v1/study/' # point where needed, but see get_remote_otus
 
 
 
@@ -114,13 +114,19 @@ if __name__ == "__main__":
             for o in otus:
                 all_synth_otus.append(o)
         count += 1
-     
+
     all_unique_otus = set(all_otus) # keep only unique values in all otus
     total_otus = len(all_otus) 
     unique_synth_otus = set(all_synth_otus) # keep only unique values in synth otus
     total_synth_otus = len(all_synth_otus)
- 
-    ## process it all, and save it to to a tsv file
+
+    # process it all, and save it to to a tsv file
     stop_time = timeit.default_timer()
     run_time = stop_time - start_time
-    save_otu_count(str(len(all_unique_otus)), str(len(study_list)), str(run_time), str(total_otus), str(len(synth_study_list)), str(len(unique_synth_otus)), str(total_synth_otus))
+    save_otu_count(str(len(all_unique_otus)), 
+                   str(len(study_list)), 
+                   str(run_time), 
+                   str(total_otus), 
+                   str(len(synth_study_list)), 
+                   str(len(unique_synth_otus)), 
+                   str(total_synth_otus))
