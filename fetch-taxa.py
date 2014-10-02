@@ -35,16 +35,17 @@ def main(argv):
    tree1 = ''
    tree2 = ''
    outstyle = ''
+   outformat = ''
    outfile = ''
 
    try:
-      opts, args = getopt.getopt(argv,"h1:2:s:o:",["tree1=","tree2="])
+      opts, args = getopt.getopt(argv,"h1:2:s:f:o:",["tree1=","tree2="])
    except getopt.GetoptError:
-      print 'fetch-taxa.py -1 <tree1> -2 <tree2> -s <all/unique> -o <output filename>'
+      print 'fetch-taxa.py -1 <tree1> -2 <tree2> -s <all/unique> -f <text/json> -o <output filename>'
       sys.exit(2)
    for opt, arg in opts:
       if opt == '-h':
-         print 'fetch-taxa.py -1 <tree1> -2 <tree2> -s <all/unique> -o <output filename>'
+         print 'fetch-taxa.py -1 <tree1> -2 <tree2> -s <all/unique> -f <text/json> -o <output filename>'
          sys.exit()
       elif opt in ("-1", "--tree1"):
          tree1 = arg
@@ -52,10 +53,12 @@ def main(argv):
          tree2 = arg
       elif opt in ("-s", "--outstyle"):
          outstyle = arg
+      elif opt in ("-f", "--outformat"):
+         outformat = arg
       elif opt in ("-o", "--outfile"):
          outfile = arg
 
-   return tree1, tree2, outstyle, outfile 
+   return tree1, tree2, outstyle, outformat, outfile 
 
 def get_study_otus(study, source):
 
@@ -109,11 +112,11 @@ def print_taxa_list (tree1_taxa, tree2_taxa, target1, target2, outstyle):
 
     
 
-study_fetch_url = 'http://api.opentreeoflife.org/phylesystem/v1/study/' # point where needed
+study_fetch_url = 'http://api.opentreeoflife.org/v2/study/' # point where needed
 
 if __name__ == "__main__":
     
-    target1, target2, outstyle, outfile = main(sys.argv[1:])
+    target1, target2, outstyle, outformat, outfile = main(sys.argv[1:])
     tree1_study_source = target1.split("_")[0]
     tree2_study_source = target2.split("_")[0]
     tree1_study =  target1.split("_")[1]
@@ -131,9 +134,15 @@ if __name__ == "__main__":
 
     if outfile == '':
         if outstyle == 'all':
-            print_taxa_list(tree1_taxa, tree2_taxa, target1, target2, outstyle)
+            if outformat == 'text':
+                print_taxa_list(tree1_taxa, tree2_taxa, target1, target2, outstyle)
+            elif outformat == 'json':
+                print_taxa_json(tree1_taxa, tree2_taxa, target1, target2, outstyle)
         elif outstyle == 'unique':
-            print_taxa_list(set(tree1_taxa), set(tree2_taxa), target1, target2, outstyle)
+            if outformat == 'text':
+                print_taxa_list(set(tree1_taxa), set(tree2_taxa), target1, target2, outstyle)
+            elif outformat == 'json':
+                print_taxa_json(set(tree1_taxa), set(tree2_taxa), target1, target2, outstyle)
 
     else:
 
