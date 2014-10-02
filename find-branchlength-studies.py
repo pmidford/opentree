@@ -1,7 +1,8 @@
-import simplejson as json
+import json
 import requests
+import sys, getopt
 
-def _decode_list(data): # used for parsing out unicode
+def _decode_list(data):  # used for parsing out unicode
     rv = []
     for item in data:
         if isinstance(item, unicode):
@@ -14,7 +15,8 @@ def _decode_list(data): # used for parsing out unicode
 
     return rv
 
-def _decode_dict(data): # used to parse out unicode
+
+def _decode_dict(data):  # used to parse out unicode
     rv = {}
     for key, value in data.iteritems():
         if isinstance(key, unicode):
@@ -29,6 +31,7 @@ def _decode_dict(data): # used to parse out unicode
 
     return rv
 
+
 def get_study_list(api_url):
     study_list = []
     url = "%s/studies/find_studies" %api_url
@@ -40,70 +43,105 @@ def get_study_list(api_url):
 
     return study_list
 
+
 def get_remote_tree_ids(study, study_url):
-    url = '%s%s/' %(study_url, study)
+    """returns list of tree ids in study specified by study"""
+    url = '%s%s/' % (study_url, study)
     response = requests.get(url)
     json_data = json.loads(response.text, object_hook=_decode_dict)
     trees = []
     for t in json_data['data']['nexml']['trees']['tree']:
-        trees.append(t['@id'] )
+        trees.append(t['@id'])
 
     return trees
 
-def get_tree(tid, study_url, study):
 
-    url = '%s%s/tree/%s' %(study_url, study, tid)
+def get_tree(tid, study_url, study):
+    """returns json version of tree specified by study and tid (tree id)"""
+    url = '%s%s/tree/%s' % (study_url, study, tid)
     response = requests.get(url)
     json_data = json.loads(response.text, object_hook=_decode_dict)
 
     return json_data
 
+
 def find_branchlengths(tree, t):
     branch_lengths = False
     tree_json = tree[t]
-    branch_length_keys = ['^ot:branchLengthDescription', '^ot:branchLengthTimeUnit', '^ot:branchLengthMode']
+    branch_length_keys = ['^ot:branchLengthDescription', 
+                          '^ot:branchLengthTimeUnit', 
+                          '^ot:branchLengthMode']
     description = []
     for x in branch_length_keys:
         value = tree_json.get(x)
         if value is not None and value is not '':
             branch_lengths = True
             if branch_length_keys.index(x) is 0:
-                description.append(tree_json['^ot:branchLengthDescription'] )
+                description.append(tree_json['^ot:branchLengthDescription'])
             elif branch_length_keys.index(x) is 1:
                 description.append(tree_json['^ot:branchLengthTimeUnit'])
             elif branch_length_keys.index(x) is 2:
                 description.append(tree_json['^ot:branchLengthMode'])
 
-     
     return branch_lengths, description
 
 
+def getargs(argv):
+    """reads command-line arguments"""
+    format = ''
+    filter = ''
+    outfile = ''
 
+    try:
+        opts, args = getopt.getopt(argv,"h:fi:fo:o",[])
+    except getopt.GetoptError:
+        print 'find-branchlength-studies.py -fi <all/accepted/used> -fo <text/json> -o <output filename>'
+        sys.exit(2)
+    for opt in opts:
+        if opt == '-h':
+            print 'find-branchlength-studies.py -fi <all/accepted/used> -fo <text/json> -o <output filename>'
+            sys.exit()
+        elif opt == '-fi':
+            filter = arg
+        elif opt == '-fo':
+            format = arg
+        elif opt == 'o':
+            outfile = ''
+    return filter, format, outfile
+            
+            
 api_url = 'http://api.opentreeoflife.org/v2/'
 study_url = 'http://api.opentreeoflife.org/v2/study/'
 
-print "Getting list of all studies"
-study_list = get_study_list (api_url)
-#study_list = ['pg_10']  # for testing purposes
-print "...complete"
+if __name__ == "__main__":
 
+    filter, format, outfile = getargs(sys.argv[1:])
 
-handle = open('branch_length_studies.tsv', 'a')
-for s in study_list:
-    study = s
-    print "Checking study %s for branch lengths..." %study
-    tree_ids = get_remote_tree_ids(study, study_url)
-    branch_length_trees = []
-    for t in tree_ids:
-        tree = get_tree(t, study_url, study)
-        branch_lengths, description = find_branchlengths(tree, t)
-        if branch_lengths is True:
-            branch_length_trees.append(t)
-    if len(branch_length_trees) > 0:
-        if len(branch_length_trees) > 1:
-             tree_string = ",".join(branch_length_trees)
-        else:
-            tree_string = branch_length_trees[0]
-        handle.write("".join([s,'\t',tree_string])+'\n')
+    print "Getting list of all studies"
+    study_list = get_study_list(api_url)
+    # study_list = ['pg_10']  # for testing purposes
+    print "...complete"
+
+    results = []
+    handle = open('branch_length_studies.tsv', 'a')
+    for s in study_list:
+        study = s
+        print "Checking study %s for branch lengths..." % study
+        tree_ids = get_remote_tree_ids(study, study_url)
+        branch_length_trees = []
+        for t in tree_ids:
+            tree = get_tree(t, study_url, study)
+            branch_lengths, description = find_branchlengths(tree, t)
+            if branch_lengths is True:
+                branch_length_trees.append(t)
+        if len(branch_length_trees) > 0:
+            if len(branch_length_trees) > 1:
+                tree_string = ",".join(branch_length_trees)
+            else:
+                tree_string = branch_length_trees[0]
+        results.append((s, branch_length_trees))
+        #handle.write("".join([s, '\t', tree_string]) + '\n')
 
 handle.close()
+
+
