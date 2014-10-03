@@ -1,6 +1,6 @@
 import json
 import requests
-import sys, getopt
+import sys, argparse
 
 def _decode_list(data):  # used for parsing out unicode
     rv = []
@@ -32,15 +32,32 @@ def _decode_dict(data):  # used to parse out unicode
     return rv
 
 
-def get_study_list(api_url):
+def get_study_list(api_url,accepted):
     study_list = []
     url = "%s/studies/find_studies" %api_url
     headers = {'content-type': 'application/json'}
     response = requests.post(url, headers=headers)
     studies = json.loads(response.text, object_hook=_decode_dict)
     for o in studies['matched_studies']:
-        study_list.append(o['ot:studyId'])
+        if accepted is False:
+            study_list.append(o['ot:studyId'])
+        else:
+            study_list.append(o['ot:studyId'])
+    return study_list
 
+
+def get_synthetic_tree_support_study_list(api_url):
+    study_list = []
+    url = "%s/tree_of_life/about" % api_url
+    headers = {'content-type': 'application/json'}
+    params = {'study_list': 'true'}
+    response = requests.post(url, headers=headers, params=params)
+    json_data = json.loads(response.text, object_hook=_decode_dict)
+    studies = json_data['study_list']
+    for s in studies:
+        print s
+        if (s['study_id'] != 'taxonomy'):
+            study_list.append(s['study_id'])
     return study_list
 
 
@@ -86,28 +103,22 @@ def find_branchlengths(tree, t):
     return branch_lengths, description
 
 
+default_output = 'branch_length_studies.tsv'
 def getargs(argv):
     """reads command-line arguments"""
-    format = ''
-    filter = ''
-    outfile = ''
 
-    try:
-        opts, args = getopt.getopt(argv,"h:fi:fo:o",[])
-    except getopt.GetoptError:
-        print 'find-branchlength-studies.py -fi <all/accepted/used> -fo <text/json> -o <output filename>'
-        sys.exit(2)
-    for opt in opts:
-        if opt == '-h':
-            print 'find-branchlength-studies.py -fi <all/accepted/used> -fo <text/json> -o <output filename>'
-            sys.exit()
-        elif opt == '-fi':
-            filter = arg
-        elif opt == '-fo':
-            format = arg
-        elif opt == 'o':
-            outfile = ''
-    return filter, format, outfile
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-l', '--filter', 
+                        help="<all | accepted | used> - which studies are reviewed")
+    parser.add_argument('-r', '--format', help="<csv | json> - output format")
+    parser.add_argument('-o', '--outname', help="name of file for output")
+    args = parser.parse_args()
+
+    filter = args.filter
+    format = args.format
+    outname = args.outname
+
+    return filter, format, outname
             
             
 api_url = 'http://api.opentreeoflife.org/v2/'
@@ -115,15 +126,29 @@ study_url = 'http://api.opentreeoflife.org/v2/study/'
 
 if __name__ == "__main__":
 
-    filter, format, outfile = getargs(sys.argv[1:])
+    print "Processing: %s" % sys.argv[1:]
+    filter, format, outname= getargs(sys.argv[1:])
+    print "Got filter: %s, format: %s, outname: %s" % (filter, format, outname)
 
-    print "Getting list of all studies"
-    study_list = get_study_list(api_url)
-    # study_list = ['pg_10']  # for testing purposes
+    if filter.lower() == 'used':
+        print "Test list of studies supporting synthetic tree"
+        study_list =  get_synthetic_tree_support_study_list(api_url)
+    elif filter.lower() == 'accepted':
+        print "Test list of studies accepted by checker"
+        study_list = get_study_list(api_url,accepted=True)
+    else:
+        print "Getting list of all studies"
+        study_list = get_study_list(api_url,accepted=False)
     print "...complete"
 
+
     results = []
-    handle = open('branch_length_studies.tsv', 'a')
+    if outname is None:
+        handle = sys.stdout
+    else:
+        handle = open('branch_length_studies.tsv', 'a')
+    print "Outname is %s" % repr(outname)
+    print "Handle is %s" % str(handle)
     for s in study_list:
         study = s
         print "Checking study %s for branch lengths..." % study
@@ -132,16 +157,26 @@ if __name__ == "__main__":
         for t in tree_ids:
             tree = get_tree(t, study_url, study)
             branch_lengths, description = find_branchlengths(tree, t)
-            if branch_lengths is True:
+            if branch_lengths:
                 branch_length_trees.append(t)
         if len(branch_length_trees) > 0:
-            if len(branch_length_trees) > 1:
-                tree_string = ",".join(branch_length_trees)
-            else:
-                tree_string = branch_length_trees[0]
-        results.append((s, branch_length_trees))
+            results.append({"study": s, "trees": branch_length_trees})
+            
+            # if len(branch_length_trees) > 1:
+            #    tree_string = ",".join(branch_length_trees)
+            # else:
+            #    tree_string = branch_length_trees[0]
         #handle.write("".join([s, '\t', tree_string]) + '\n')
 
-handle.close()
-
-
+    if format.lower() == 'json':
+        json.dump(results,handle)
+    else:
+        for item in results:
+            if len(item['trees'])>1:
+                tree_string = ",".join(item['trees'])
+            else:
+                tree_string = item['trees'][0]
+            handle.write("".join([item['study'], '\t', tree_string]) + '\n')
+        
+    if handle != sys.stdout:
+        handle.close()
