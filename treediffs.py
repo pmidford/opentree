@@ -50,7 +50,7 @@ def get_synthetic_tree_support_study_list(api_url):
     for s in studies:
         print s
         if (s['study_id'] != 'taxonomy'):
-            study_list.append(s['study_id'])
+            study_list.append(s)
     return study_list
 
 
@@ -72,7 +72,21 @@ def get_tree(tid, study_url, study):
     response = requests.get(url)
     json_data = json.loads(response.text, object_hook=_decode_dict)
 
+
     return json_data
+
+
+study_tree_newick_api = "http://api.opentreeoflife.org/v2/study"
+# source_tree"
+
+def _get_remote_tree_newick(tree_spec):
+    """ """
+    print "Will request %s" % tree_spec
+    url = "%s/%s/tree/tree%s.tre" % (study_tree_newick_api,tree_spec['study_id'],tree_spec['tree_id'])
+    response = requests.get(url)
+    print "url was %s" % response.url
+    newick = response.text
+    return newick
 
 # Utils
 
@@ -135,9 +149,11 @@ if __name__ == "__main__":
     filter, format, outname= _getargs(sys.argv[1:])
     print "Got filter: %s, format: %s, outname: %s" % (filter, format, outname)
 
+    tree_list = None
+    study_list = None
     if filter.lower() == 'used':
-        print "Test list of studies supporting synthetic tree"
-        study_list =  get_synthetic_tree_support_study_list(api_url)
+        print "Test list of trees supporting synthetic tree"
+        tree_list =  get_synthetic_tree_support_study_list(api_url)
     elif filter.lower() == 'accepted':
         print "Test list of studies accepted by checker"
         study_list = get_study_list(api_url,accepted=True)
@@ -145,4 +161,19 @@ if __name__ == "__main__":
         print "Getting list of all studies"
         study_list = get_study_list(api_url,accepted=False)
     print "...complete"
+
+    if study_list:
+        for s in study_list:
+            pass
+    else:
+        for t in tree_list:
+            newick_tree = _get_remote_tree_newick(t)
+            study_tree = None
+            try:
+                study_tree = dendropy.Tree.get_from_string(newick_tree, schema="newick")
+            except Exception as e:
+                print "Parsing error: ", e
+            if study_tree:
+                my_seed = study_tree.seed_node
+                print "root is %s" % str(my_seed.oid)
 
