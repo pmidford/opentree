@@ -2,6 +2,9 @@ import requests
 import json
 import sys, argparse
 
+# need some library - this is one of many choices
+import dendropy
+
 # for each study tree
 # find root or focal clade
 # request subtree of synthetic tree
@@ -71,10 +74,6 @@ def get_tree(tid, study_url, study):
 
     return json_data
 
-
-
-
-
 # Utils
 
 def _decode_list(data):  # used for parsing out unicode
@@ -109,6 +108,11 @@ def _decode_dict(data):  # used to parse out unicode
 def _getargs(argv):
     """reads command-line arguments"""
 
+    # defaults
+    filter = 'used'
+    format = 'json'
+    outname = 'diffs.json'
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--filter', 
                         help="<all | accepted | used> - which trees are reviewed")
@@ -116,11 +120,29 @@ def _getargs(argv):
     parser.add_argument('-o', '--outname', help="name of file for output")
     args = parser.parse_args()
 
-    filter = args.filter
-    format = args.format
-    outname = args.outname
+    if args.filter:
+        filter = args.filter
+    if args.format:
+        format = args.format
+    if args.outname:
+        outname = args.outname
 
     return filter, format, outname
 
+if __name__ == "__main__":
+    
+    print "Processing: %s" % sys.argv[1:]
+    filter, format, outname= _getargs(sys.argv[1:])
+    print "Got filter: %s, format: %s, outname: %s" % (filter, format, outname)
 
+    if filter.lower() == 'used':
+        print "Test list of studies supporting synthetic tree"
+        study_list =  get_synthetic_tree_support_study_list(api_url)
+    elif filter.lower() == 'accepted':
+        print "Test list of studies accepted by checker"
+        study_list = get_study_list(api_url,accepted=True)
+    else:
+        print "Getting list of all studies"
+        study_list = get_study_list(api_url,accepted=False)
+    print "...complete"
 
