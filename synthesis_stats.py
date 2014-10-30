@@ -8,8 +8,7 @@ import sys
 import argparse
 
 '''
-Basic script to retreive a count of OTUs from all studies in phylesystem and all 
-studies in synthesis.
+Basic script to retreive a count of OTUs from all studies in synthesis
 In Short:
 Grabs the files via API
 Parses the adding OTUS to lists
@@ -31,6 +30,7 @@ def _decode_list(data): # used for parsing out unicode
         rv.append(item)
     return rv
 
+
 def _decode_dict(data): # used to parse out unicode
     rv = {}
     for key, value in data.iteritems():
@@ -44,6 +44,7 @@ def _decode_dict(data): # used to parse out unicode
             value = _decode_dict(value)
         rv[key] = value
     return rv
+
 
 def load_old_results_json(in_name):
     if os.path.isfile(in_name):
@@ -73,6 +74,7 @@ def parse_synth_study_ids(synthesis_list):
 
     return synth_study_list
 
+
 def get_synth_study_list(api_url):
     url = "%s/tree_of_life/about" % api_url
     synth_response = requests.post(url,
@@ -92,10 +94,10 @@ def get_remote_otus(json_data): # grabs the json of each study via the OpenTree 
     otus = []
     for otu in json_data['data']['nexml']['otus']['otu']:
         otus.append(otu['@id'])
-
     return otus
     
 default_output = 'synthesis_stats.json'
+
 def getargs():
     """reads command-line arguments"""
 
@@ -124,8 +126,7 @@ def process():
     server, filename = getargs()
 
     api_url = server + 'v2/'
-    # 'http://api.opentreeoflife.org/treemachine/v1/getSynthesisSourceList' # point where needed
-    study_list_url = 'http://api.opentreeoflife.org/phylesystem/v1/study_list' # point where needed
+
     study_api_url = 'http://api.opentreeoflife.org/phylesystem/v1/study/' # point where needed, but see get_remote_otus
 
     old_data = load_old_results_json(filename)
@@ -144,7 +145,7 @@ def process():
     unique_nominated_otus = []
     count = 1
     for s in synth_study_list:
-        print "Loading study {0}, {1} / {2}".format(str(s), count, len(synth_study_list))
+        # print "Loading study {0}, {1} / {2}".format(str(s), count, len(synth_study_list))
         json_study = load_study_json(s, study_api_url)
         otus = get_remote_otus(json_study)
         for o in otus:
